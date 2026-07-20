@@ -1,7 +1,10 @@
 public class Main {
     public static void main(String[] args) {
-        Listing testApartment = new Listing("ID-001", 25000000.0, 50.0, "krisha.kz/test");
+
+        MarketParser mercenary = new KrishaParser();
+        Listing finalResult = mercenary.parseDeal("krisha.kz/kvartira");
+
         Analyzer bot = new Analyzer();
-        bot.analyzeDeal(testApartment);
+        bot.analyzeDeal(finalResult);
     }
 }
