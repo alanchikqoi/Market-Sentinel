@@ -15,7 +15,11 @@
     </properties>
 
     <dependencies>
-        <!-- Сюда мы завтра пропишем поставку библиотеки для Телеграм-бота -->
+        <dependency>
+            <groupId>org.telegram</groupId>
+            <artifactId>telegrambots</artifactId>
+            <version>6.8.0</version>
+        </dependency>
     </dependencies>
 
 </project>
