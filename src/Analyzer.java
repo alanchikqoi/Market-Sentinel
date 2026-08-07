@@ -1,15 +1,15 @@
 public class Analyzer {
-    public void analyzeDeal(Listing target) {
+    public String analyzeDeal(Listing target) {
         double pricePerSquare = target.getCost() / target.getArea();
 
-        System.out.println("Analyzing URL: " + target.getUrl());
-        System.out.println("Price per SQM: " + pricePerSquare + " KZT");
+        String str = "Analyzing URL: " + target.getUrl() + "\n" + "Price per SQM: " + String.valueOf(pricePerSquare);
 
         if (pricePerSquare < 480000.0) {
-            System.out.println("VERDICT: Below market price! Action: BUY.");
+            str += "\nVERDICT: Below market price! Action: BUY.\n";
         } else {
-            System.out.println("VERDICT: Overpriced. Action: SKIP.");
+            str += "\nVERDICT: Overpriced. Action: SKIP.\n";
         }
-        System.out.println("-----------------------------------");
+
+        return str;
     }
 }
