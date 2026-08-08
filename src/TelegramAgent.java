@@ -21,17 +21,38 @@ public class TelegramAgent extends TelegramLongPollingBot {
             String userText = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
 
-            // 1. Создаем тестовую хату с правильным конструктором (ID, Цена, Площадь, Ссылка)
-            Listing testListing = new Listing("1001", 15000000, 45.0, "https://krisha.kz/test");
-
-            // 2. Подключаем твой мозг (Анализатор)
-            Analyzer analyzer = new Analyzer();
-            String verdict = analyzer.analyzeDeal(testListing);
-
-            // 3. Формируем ответный удар с результатами анализа
             SendMessage message = new SendMessage();
             message.setChatId(String.valueOf(chatId));
-            message.setText("Запрос принят: " + userText + "\n\nРЕЗУЛЬТАТ АНАЛИЗА:\n" + verdict);
+
+            // Проверяем, прислал ли пользователь ссылку (начинается с http)
+            if (userText.startsWith("http")) {
+                System.out.println("Получена ссылка от пользователя, запускаем парсер...");
+                message.setText("Принял ссылку! Пробиваю защиту сайта...");
+
+                try {
+                    execute(message); // Сразу отвечаем, чтобы пользователь не ждал
+                } catch (TelegramApiException e) {
+                    e.printStackTrace();
+                }
+
+                // 1. Запускаем нашего наемника (парсер)
+                KrishaParser parser = new KrishaParser();
+                Listing listing = parser.parseDeal(userText);
+
+                if (listing != null) {
+                    // 2. Подключаем Анализатор
+                    Analyzer analyzer = new Analyzer();
+                    String verdict = analyzer.analyzeDeal(listing);
+
+                    // 3. Отправляем готовый вердикт
+                    message.setText("РЕЗУЛЬТАТ АНАЛИЗА ОБЪЕКТА:\n\n" + verdict);
+                } else {
+                    message.setText("Ошибка: Не удалось спарсить объявление. Проверь ссылку.");
+                }
+
+            } else {
+                message.setText("Салам! Скинь мне ссылку на квартиру с Крыши, а я выдам вердикт BUY/SKIP.");
+            }
 
             try {
                 execute(message);
