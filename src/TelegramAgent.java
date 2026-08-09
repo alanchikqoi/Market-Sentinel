@@ -2,8 +2,16 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 
 public class TelegramAgent extends TelegramLongPollingBot {
+
+    private Long adminChatId = null;
+
+    private ScheduledExecutorService timer = Executors.newScheduledThreadPool(1);
 
     @Override
     public String getBotUsername() {
@@ -21,44 +29,44 @@ public class TelegramAgent extends TelegramLongPollingBot {
             String userText = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
 
-            SendMessage message = new SendMessage();
-            message.setChatId(String.valueOf(chatId));
+            // === НОВАЯ ЛОГИКА АВТОПИЛОТА ===
+            if (userText.equals("/start")) {
+                adminChatId = chatId; // Запоминаем хозяина
+                sendMsg(chatId, "Салам! Я запомнил твой ID: " + adminChatId + ". Включаю автопилот...");
 
-            // Проверяем, прислал ли пользователь ссылку (начинается с http)
+                // Запускаем фоновую задачу каждые 10 секунд
+                timer.scheduleAtFixedRate(() -> {
+                    if (adminChatId != null) {
+                        System.out.println("Таймер сработал! Имитация поиска...");
+                        sendMsg(adminChatId, "Автопилот в деле: мониторю рынок...");
+                    }
+                }, 0, 10, TimeUnit.SECONDS);
+
+                return; // Прерываем метод, чтобы он не пошел дальше
+            }
+
+            // === ТВОЯ СТАРАЯ ЛОГИКА ПАРСЕРА ===
             if (userText.startsWith("http")) {
                 System.out.println("Получена ссылка от пользователя, запускаем парсер...");
-                message.setText("Принял ссылку! Пробиваю защиту сайта...");
+                sendMsg(chatId, "Принял ссылку! Пробиваю защиту сайта...");
 
-                try {
-                    execute(message); // Сразу отвечаем, чтобы пользователь не ждал
-                } catch (TelegramApiException e) {
-                    e.printStackTrace();
-                }
+                // ... (здесь твой рабочий код с KrishaParser и Analyzer) ...
 
-                // 1. Запускаем нашего наемника (парсер)
-                KrishaParser parser = new KrishaParser();
-                Listing listing = parser.parseDeal(userText);
-
-                if (listing != null) {
-                    // 2. Подключаем Анализатор
-                    Analyzer analyzer = new Analyzer();
-                    String verdict = analyzer.analyzeDeal(listing);
-
-                    // 3. Отправляем готовый вердикт
-                    message.setText("РЕЗУЛЬТАТ АНАЛИЗА ОБЪЕКТА:\n\n" + verdict);
-                } else {
-                    message.setText("Ошибка: Не удалось спарсить объявление. Проверь ссылку.");
-                }
-
+                // А в конце вместо старого отправления пишешь просто:
+                // sendMsg(chatId, "РЕЗУЛЬТАТ АНАЛИЗА ОБЪЕКТА:\n\n" + verdict);
             } else {
-                message.setText("Салам! Скинь мне ссылку на квартиру с Крыши, а я выдам вердикт BUY/SKIP.");
+                sendMsg(chatId, "Скинь мне ссылку на квартиру с Крыши, а я выдам вердикт BUY/SKIP. Или нажми /start для автопилота.");
             }
-
+        }
+    }
+    private void sendMsg(long ChatId, String text){
+            SendMessage message = new SendMessage();
+            message.setChatId(String.valueOf(ChatId));
+            message.setText(text);
             try {
                 execute(message);
-            } catch (TelegramApiException e) {
+            }catch(TelegramApiException e) {
                 e.printStackTrace();
-            }
         }
     }
 }
