@@ -1,11 +1,11 @@
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 
 public class TelegramAgent extends TelegramLongPollingBot {
 
@@ -29,31 +29,40 @@ public class TelegramAgent extends TelegramLongPollingBot {
             String userText = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
 
-            // === НОВАЯ ЛОГИКА АВТОПИЛОТА ===
             if (userText.equals("/start")) {
-                adminChatId = chatId; // Запоминаем хозяина
+                adminChatId = chatId;
                 sendMsg(chatId, "Салам! Я запомнил твой ID: " + adminChatId + ". Включаю автопилот...");
 
-                // Запускаем фоновую задачу каждые 10 секунд
                 timer.scheduleAtFixedRate(() -> {
                     if (adminChatId != null) {
-                        System.out.println("Таймер сработал! Имитация поиска...");
-                        sendMsg(adminChatId, "Автопилот в деле: мониторю рынок...");
-                    }
-                }, 0, 10, TimeUnit.SECONDS);
+                        System.out.println("Таймер сработал! Запускаем парсер в фоне...");
 
-                return; // Прерываем метод, чтобы он не пошел дальше
+
+                        String targetUrl = "https://krisha.kz/a/show/1012348514";
+
+                        KrishaParser parser = new KrishaParser();
+                        Listing listing = parser.parseDeal(targetUrl);
+
+                        if (listing != null) {
+                            Analyzer analyzer = new Analyzer();
+                            String verdict = analyzer.analyzeDeal(listing);
+
+                            sendMsg(adminChatId, "АВТОПИЛОТ ОТЧЕТ:\n\n" + verdict);
+                        } else {
+                            System.out.println("Баг автопилота: Не удалось спарсить объявление.");
+                        }
+                    }
+                }, 0, 30, TimeUnit.MINUTES);
+
+                return;
             }
 
-            // === ТВОЯ СТАРАЯ ЛОГИКА ПАРСЕРА ===
             if (userText.startsWith("http")) {
                 System.out.println("Получена ссылка от пользователя, запускаем парсер...");
                 sendMsg(chatId, "Принял ссылку! Пробиваю защиту сайта...");
 
-                // ... (здесь твой рабочий код с KrishaParser и Analyzer) ...
 
-                // А в конце вместо старого отправления пишешь просто:
-                // sendMsg(chatId, "РЕЗУЛЬТАТ АНАЛИЗА ОБЪЕКТА:\n\n" + verdict);
+
             } else {
                 sendMsg(chatId, "Скинь мне ссылку на квартиру с Крыши, а я выдам вердикт BUY/SKIP. Или нажми /start для автопилота.");
             }

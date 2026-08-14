@@ -10,7 +10,6 @@ public class KrishaParser implements MarketParser {
         try {
             System.out.println("Пытаемся пробить защиту сайта: " + url);
 
-            // Подключаемся к сайту и скачиваем всю страницу
             Document doc = Jsoup.connect(url)
                     .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
                     .referrer("https://www.google.com")
@@ -18,7 +17,7 @@ public class KrishaParser implements MarketParser {
                     .timeout(10000)
                     .get();
 
-            // === БЛОК 1: ЦЕНА (Твой рабочий код) ===
+
             Element priceElement = doc.selectFirst(".offer__price");
             double finalPrice = 0;
 
@@ -33,7 +32,6 @@ public class KrishaParser implements MarketParser {
                 System.out.println("Баг: Не смогли найти тег с ценой.");
             }
 
-            // === БЛОК 2: ПЛОЩАДЬ (Новый цикл-каток) ===
             org.jsoup.select.Elements shortInfos = doc.select(".offer__advert-short-info");
             double finalArea = 0;
 
@@ -49,7 +47,6 @@ public class KrishaParser implements MarketParser {
                 }
             }
 
-            // === БЛОК 3: СБОРКА (Твоя архитектура) ===
             Listing FinalList = new Listing("1001", finalPrice, finalArea, url);
             return FinalList;
 
