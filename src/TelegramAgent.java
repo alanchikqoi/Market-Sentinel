@@ -3,6 +3,8 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -11,16 +13,17 @@ public class TelegramAgent extends TelegramLongPollingBot {
 
     private Long adminChatId = null;
 
+    private HashSet<String> viewedLinks = new HashSet<>();
     private ScheduledExecutorService timer = Executors.newScheduledThreadPool(1);
 
     @Override
     public String getBotUsername() {
-        return "AlanMarketSentinel_bot";
+        return "BOT_USERNAME";
     }
 
     @Override
     public String getBotToken() {
-        return "8925210322:AAEKP7FH0pAdLM_8RKNMl6ZvicaiUjYYOak";
+        return "BOT_TOKEN";
     }
 
     @Override
@@ -31,51 +34,60 @@ public class TelegramAgent extends TelegramLongPollingBot {
 
             if (userText.equals("/start")) {
                 adminChatId = chatId;
-                sendMsg(chatId, "Салам! Я запомнил твой ID: " + adminChatId + ". Включаю автопилот...");
+                sendMsg(chatId, "Салем! Я запомнил твой ID. Включаю снайперский автопилот...");
 
                 timer.scheduleAtFixedRate(() -> {
                     if (adminChatId != null) {
-                        System.out.println("Таймер сработал! Запускаем парсер в фоне...");
+                        System.out.println("[INFO] Timer triggered. Scanning for new listings...");
 
 
-                        String targetUrl = "https://krisha.kz/a/show/1012348514";
+                        String searchUrl = "https://krisha.kz/prodazha/kvartiry/almaty/?das[live.rooms]=2&das[price][to]=35000000";
 
                         KrishaParser parser = new KrishaParser();
-                        Listing listing = parser.parseDeal(targetUrl);
 
-                        if (listing != null) {
-                            Analyzer analyzer = new Analyzer();
-                            String verdict = analyzer.analyzeDeal(listing);
 
-                            sendMsg(adminChatId, "АВТОПИЛОТ ОТЧЕТ:\n\n" + verdict);
-                        } else {
-                            System.out.println("Баг автопилота: Не удалось спарсить объявление.");
+                        List<String> freshLinks = parser.parseSearchPage(searchUrl);
+
+                        for (String dealUrl : freshLinks) {
+
+                            if (!viewedLinks.contains(dealUrl)) {
+
+                                Listing listing = parser.parseDeal(dealUrl);
+
+                                if (listing != null) {
+                                    Analyzer analyzer = new Analyzer();
+                                    String verdict = analyzer.analyzeDeal(listing);
+
+                                    sendMsg(adminChatId, "🔥 НОВАЯ КВАРТИРА!\n\n" + verdict + "\n\nСсылка: " + dealUrl);
+
+
+                                    viewedLinks.add(dealUrl);
+                                }
+                            }
                         }
                     }
-                }, 0, 30, TimeUnit.MINUTES);
+                }, 0, 15, TimeUnit.MINUTES);
 
                 return;
             }
 
             if (userText.startsWith("http")) {
-                System.out.println("Получена ссылка от пользователя, запускаем парсер...");
                 sendMsg(chatId, "Принял ссылку! Пробиваю защиту сайта...");
-
-
-
             } else {
-                sendMsg(chatId, "Скинь мне ссылку на квартиру с Крыши, а я выдам вердикт BUY/SKIP. Или нажми /start для автопилота.");
+                sendMsg(chatId, "Жми /start для включения автопилота.");
             }
         }
     }
+
     private void sendMsg(long ChatId, String text){
-            SendMessage message = new SendMessage();
-            message.setChatId(String.valueOf(ChatId));
-            message.setText(text);
-            try {
-                execute(message);
-            }catch(TelegramApiException e) {
-                e.printStackTrace();
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(ChatId));
+        message.setText(text);
+        try {
+            execute(message);
+        } catch(TelegramApiException e) {
+            System.out.println("[ERROR] Failed to send Telegram message: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }

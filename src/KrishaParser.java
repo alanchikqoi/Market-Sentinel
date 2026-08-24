@@ -1,14 +1,18 @@
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 public class KrishaParser implements MarketParser {
 
     @Override
     public Listing parseDeal(String url) {
         try {
-            System.out.println("Пытаемся пробить защиту сайта: " + url);
+            System.out.println("[INFO] Fetching target URL: " + url);
 
             Document doc = Jsoup.connect(url)
                     .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
@@ -17,32 +21,31 @@ public class KrishaParser implements MarketParser {
                     .timeout(10000)
                     .get();
 
-
             Element priceElement = doc.selectFirst(".offer__price");
             double finalPrice = 0;
 
             if (priceElement != null) {
                 String rawPriceText = priceElement.text();
-                System.out.println("Грязная цена с сайта: " + rawPriceText);
+                System.out.println("[DEBUG] Raw price extracted: " + rawPriceText);
 
                 String cleanPriceText = rawPriceText.replaceAll("[^0-9]", "");
                 finalPrice = Double.parseDouble(cleanPriceText);
-                System.out.println("Готово к математике (Цена): " + finalPrice);
+                System.out.println("[DEBUG] Parsed price value: " + finalPrice);
             } else {
-                System.out.println("Баг: Не смогли найти тег с ценой.");
+                System.out.println("[ERROR] Failed to locate price element.");
             }
 
-            org.jsoup.select.Elements shortInfos = doc.select(".offer__advert-short-info");
+            Elements shortInfos = doc.select(".offer__advert-short-info");
             double finalArea = 0;
 
             for (Element info : shortInfos) {
                 String text = info.text();
                 if (text.contains("м²")) {
-                    System.out.println("Грязная квадратура с сайта: " + text);
+                    System.out.println("[DEBUG] Raw area extracted: " + text);
 
-                    String cleanAreaText = text.replaceAll("[^0-9.,]", "").replace(",", ".");
+                    String cleanAreaText = text.split(",")[0].replaceAll("[^0-9.]", "");
                     finalArea = Double.parseDouble(cleanAreaText);
-                    System.out.println("Готово к математике (Площадь): " + finalArea);
+                    System.out.println("[DEBUG] Parsed area value: " + finalArea);
                     break;
                 }
             }
@@ -51,9 +54,36 @@ public class KrishaParser implements MarketParser {
             return FinalList;
 
         } catch (IOException e) {
-            System.out.println("Сайт отклонил запрос или нет интернета.");
+            System.out.println("[ERROR] Connection refused or network timeout.");
             e.printStackTrace();
             return null;
         }
+    }
+
+    public List<String> parseSearchPage(String searchUrl) {
+        List<String> links = new ArrayList<>();
+        try {
+            Document doc = Jsoup.connect(searchUrl)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                    .get();
+
+            Elements cards = doc.select(".a-card__title");
+            System.out.println("[INFO] Cards found on search page: " + cards.size());
+
+            for (Element card : cards) {
+                String href = card.attr("href");
+                if (!href.startsWith("http")) {
+                    href = "https://krisha.kz" + href;
+                }
+                links.add(href);
+
+                if (links.size() >= 5) {
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("[ERROR] Search page parsing failed: " + e.getMessage());
+        }
+        return links;
     }
 }
